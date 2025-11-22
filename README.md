@@ -4,17 +4,22 @@ This FastAPI service generates Locust task skeletons from an OpenAPI specificati
 
 ## Quickstart
 
-1. Install dependencies with [uv](https://github.com/astral-sh/uv) (preferred) or your PEP 517 installer of choice:
+1. Install dependencies:
 
    ```bash
+   pip install -r requirements.txt
+   ```
+
+   Alternatively, you can use [uv](https://github.com/astral-sh/uv):
+   ```bash
    uv venv
-   uv pip install .[dev]
+   uv pip install -r requirements.txt
    ```
 
 2. Run the API:
 
    ```bash
-   uv run uvicorn app.main:app --reload
+   uvicorn app.main:app --reload
    ```
 
 3. Call the generator endpoint with a parsed OpenAPI document:

@@ -6,7 +6,6 @@ from typing import Any, Dict, Iterable, List
 
 from jinja2 import Environment
 
-
 class LocustClientType(str, Enum):
     FAST_HTTP = "fast_http"
     REQUESTS = "requests"
@@ -87,7 +86,6 @@ def generate_locustfile(
         user_class_name=user_class_name,
         task_weight=task_weight,
     )
-
 
 def _derive_operation_id(operation: Dict[str, Any], method: str, path: str) -> str:
     if isinstance(operation, dict) and "operationId" in operation:
