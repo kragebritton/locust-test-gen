@@ -10,6 +10,12 @@ This FastAPI service generates Locust task skeletons from an OpenAPI specificati
    pip install -r requirements.txt
    ```
 
+   Alternatively, you can use [uv](https://github.com/astral-sh/uv):
+   ```bash
+   uv venv
+   uv pip install -r requirements.txt
+   ```
+
 2. Run the API:
 
    ```bash
@@ -36,6 +42,7 @@ The response contains a `locustfile` string you can save locally. Use the docstr
 
 ## Design Notes
 
+- **Jinja2 templating:** Locustfiles are rendered from templates to keep formatting consistent and make it easier to extend.
 - **Client flexibility:** Generate users that inherit from `FastHttpUser` or `HttpUser` to match your preferred HTTP backend.
 - **Operation coverage:** Every operation in the `paths` section becomes a task with sensible names derived from `operationId`, `summary`, or the HTTP verb and path.
 - **Human-in-the-loop:** Payload generation and cross-task data sharing are left as commented placeholders so you can incorporate domain knowledge (e.g., passing IDs from create calls into subsequent reads).

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Iterable, List
 
+from jinja2 import Environment
 
 class LocustClientType(str, Enum):
     FAST_HTTP = "fast_http"
@@ -66,75 +67,25 @@ def generate_locustfile(
 ) -> str:
     operations = parse_operations(spec)
     client_import = "FastHttpUser" if client_type == LocustClientType.FAST_HTTP else "HttpUser"
-    client_comment = (
-        "client: FastHttpSession" if client_type == LocustClientType.FAST_HTTP else "client: HttpSession"
+
+    return LOCUST_TEMPLATE.render(
+        host=host,
+        client_import=client_import,
+        operations=[
+            {
+                "method_name": _safe_method_name(op.operation_id),
+                "summary": op.summary,
+                "has_request_body": op.has_request_body,
+                "param_comments": _build_param_comments(op),
+                "method": op.method,
+                "path": op.path,
+                "request_name": f"{op.method} {op.path}",
+            }
+            for op in operations
+        ],
+        user_class_name=user_class_name,
+        task_weight=task_weight,
     )
-
-    lines: List[str] = [
-        "from typing import Any, Dict",
-        "",
-        "from locust import HttpUser, FastHttpUser, between, task",
-        "",
-        f"class {user_class_name}({client_import}):",
-        "    \"\"\"\n    Auto-generated skeleton tasks.\n\n"
-        "    Fill in payloads and sequencing based on your domain logic.\n"
-        "    You can move validated data between tasks using shared attributes.\n"
-        "    \"\"\"",
-        "    wait_time = between(1, 5)",
-        f"    host = \"{host}\"",
-        "",
-    ]
-
-    for op in operations:
-        lines.extend(_render_operation_task(op, task_weight))
-
-    if not operations:
-        lines.append("    # No operations were discovered in the provided OpenAPI document.")
-
-    return "\n".join(lines) + "\n"
-
-
-def _render_operation_task(operation: Operation, weight: int) -> List[str]:
-    method_name = _safe_method_name(operation.operation_id)
-    lines = [
-        "    @task({})".format(weight),
-        f"    def {method_name}(self) -> None:",
-        f"        \"\"\"{operation.summary}\"\"\"",
-        "        # TODO: Replace placeholder payloads with schema-aware data",
-    ]
-
-    if operation.has_request_body:
-        lines.extend(
-            [
-                "        payload: Dict[str, Any] = {",
-                "            # populate request body using the schema in the OpenAPI document",
-                "        }",
-            ]
-        )
-    else:
-        lines.append("        payload = None")
-
-    param_comments = _build_param_comments(operation)
-    if param_comments:
-        lines.append(f"        # Parameters: {param_comments}")
-
-    request_name = f"{operation.method} {operation.path}"
-    lines.extend(
-        [
-            "        with self.client.request(",
-            f"            \"{operation.method}\",",
-            f"            \"{operation.path}\",",
-            f"            name=\"{request_name}\",",
-            "            json=payload,",
-            "            params={},",
-            "        ) as response:",
-            "            response.raise_for_status()",
-            "            # TODO: capture response data to chain into subsequent tasks",
-        ]
-    )
-
-    return lines + [""]
-
 
 def _derive_operation_id(operation: Dict[str, Any], method: str, path: str) -> str:
     if isinstance(operation, dict) and "operationId" in operation:
@@ -167,3 +118,48 @@ def _safe_method_name(operation_id: str) -> str:
     if cleaned and cleaned[0].isdigit():
         cleaned = f"op_{cleaned}"
     return cleaned or "unnamed_operation"
+
+
+LOCUST_TEMPLATE = Environment(trim_blocks=True, lstrip_blocks=True).from_string(
+    '''
+from typing import Any, Dict
+
+from locust import HttpUser, FastHttpUser, between, task
+
+
+class {{ user_class_name }}({{ client_import }}):
+    """
+    Auto-generated skeleton tasks.
+
+    Fill in payloads and sequencing based on your domain logic.
+    You can move validated data between tasks using shared attributes.
+    """
+
+    wait_time = between(1, 5)
+    host = "{{ host }}"
+
+{% if not operations %}
+    # No operations were discovered in the provided OpenAPI document.
+{% endif %}
+{% for op in operations %}
+    @task({{ task_weight }})
+    def {{ op.method_name }}(self) -> None:
+        """{{ op.summary }}"""
+        # TODO: Replace placeholder payloads with schema-aware data
+        payload{% if op.has_request_body %}: Dict[str, Any] = {
+            # populate request body using the schema in the OpenAPI document
+        }{% else %} = None{% endif %}
+        {% if op.param_comments %}# Parameters: {{ op.param_comments }}
+        {% endif %}with self.client.request(
+            "{{ op.method }}",
+            "{{ op.path }}",
+            name="{{ op.request_name }}",
+            json=payload,
+            params={},
+        ) as response:
+            response.raise_for_status()
+            # TODO: capture response data to chain into subsequent tasks
+
+{% endfor %}
+'''
+)
