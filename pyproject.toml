@@ -1,0 +1,22 @@
+[project]
+name = "locust-test-gen"
+version = "0.1.0"
+description = "FastAPI service that generates Locust load-test skeletons from OpenAPI documents"
+authors = [{ name = "Auto Generated" }]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "locust",
+    "pydantic",
+    "uvicorn",
+    "jinja2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
